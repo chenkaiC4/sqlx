@@ -12,10 +12,12 @@ import (
 
 // GzippedText is a []byte which transparently gzips data being submitted to
 // a database and ungzips data being Scanned from a database.
+// GzippedText 是 []byte 类型，用于 gzip 数据的储存。
 type GzippedText []byte
 
 // Value implements the driver.Valuer interface, gzipping the raw value of
 // this GzippedText.
+// Value 实现了 driver.Valuer interface, 将 GzippedText 的数据进行 gzip 压缩。
 func (g GzippedText) Value() (driver.Value, error) {
 	b := make([]byte, 0, len(g))
 	buf := bytes.NewBuffer(b)
@@ -28,6 +30,7 @@ func (g GzippedText) Value() (driver.Value, error) {
 
 // Scan implements the sql.Scanner interface, ungzipping the value coming off
 // the wire and storing the raw result in the GzippedText.
+// Scan 实现了 sql.Scanner interface, 解压 gzip 数据到 GzippedText。
 func (g *GzippedText) Scan(src interface{}) error {
 	var source []byte
 	switch src.(type) {
@@ -43,7 +46,7 @@ func (g *GzippedText) Scan(src interface{}) error {
 		return err
 	}
 	defer reader.Close()
-	b, err := ioutil.ReadAll(reader)
+	b, err := ioutil.ReadAll(reader) // 最好用 io.Copy，性能更好
 	if err != nil {
 		return err
 	}
@@ -55,19 +58,24 @@ func (g *GzippedText) Scan(src interface{}) error {
 // Value() validates the json format in the source, and returns an error if
 // the json is not valid.  Scan does no validation.  JSONText additionally
 // implements `Unmarshal`, which unmarshals the json within to an interface{}
+// JSONText 是 json.RawMessage 类型, 底层是 []byte 结构。
+// Value() 会验证 json 格式，如果验证失败则返回一个错误信息。
+// Scan 不进行验证。JSONText 还提供了 `Unmarshal` 方法，可以将 json 数据写入到 interface{}。
 type JSONText json.RawMessage
 
-var emptyJSON = JSONText("{}")
+var emptyJSON = JSONText("{}") // 空 json
 
 // MarshalJSON returns the *j as the JSON encoding of j.
-func (j JSONText) MarshalJSON() ([]byte, error) {
-	if len(j) == 0 {
+// MarshalJSON 返回 *j 作为 encode 数据。
+func (j *JSONText) MarshalJSON() ([]byte, error) {
+	if len(*j) == 0 {
 		return emptyJSON, nil
 	}
-	return j, nil
+	return *j, nil
 }
 
 // UnmarshalJSON sets *j to a copy of data
+// UnmarshalJSON 将 data copy 给 *j。
 func (j *JSONText) UnmarshalJSON(data []byte) error {
 	if j == nil {
 		return errors.New("JSONText: UnmarshalJSON on nil pointer")
@@ -78,6 +86,7 @@ func (j *JSONText) UnmarshalJSON(data []byte) error {
 
 // Value returns j as a value.  This does a validating unmarshal into another
 // RawMessage.  If j is invalid json, it returns an error.
+// Value 返回 j.  在 unmarshal 时会进行验证，如果不是 json 格式，将会返回 error。
 func (j JSONText) Value() (driver.Value, error) {
 	var m json.RawMessage
 	var err = j.Unmarshal(&m)
@@ -109,6 +118,7 @@ func (j *JSONText) Scan(src interface{}) error {
 }
 
 // Unmarshal unmarshal's the json in j to v, as in json.Unmarshal.
+// Unmarshal unmarshal j 到 v。
 func (j *JSONText) Unmarshal(v interface{}) error {
 	if len(*j) == 0 {
 		*j = emptyJSON
@@ -117,6 +127,7 @@ func (j *JSONText) Unmarshal(v interface{}) error {
 }
 
 // String supports pretty printing for JSONText types.
+// String 支持 printing .
 func (j JSONText) String() string {
 	return string(j)
 }
@@ -124,6 +135,8 @@ func (j JSONText) String() string {
 // NullJSONText represents a JSONText that may be null.
 // NullJSONText implements the scanner interface so
 // it can be used as a scan destination, similar to NullString.
+// NullJSONText 用于 null JSONText。
+// NullJSONText 实现了 scanner interface 类似于 NullString，这样便可以写入 null 数据。
 type NullJSONText struct {
 	JSONText
 	Valid bool // Valid is true if JSONText is not NULL

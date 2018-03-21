@@ -24,6 +24,10 @@ import (
 // it uses strings.ToLower to lowercase struct field names.  It can be set
 // to whatever you want, but it is encouraged to be set before sqlx is used
 // as name-to-field mappings are cached after first use on a type.
+// NameMapper 用于将 table 的 column 和 struct 的 filed 对应。
+// 默认情况下，使用 strings.ToLower 来小写化 struct field names。 It can be set
+// to whatever you want, but it is encouraged to be set before sqlx is used
+// as name-to-field mappings are cached after first use on a type.
 var NameMapper = strings.ToLower
 var origMapper = reflect.ValueOf(NameMapper)
 
